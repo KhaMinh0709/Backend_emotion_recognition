@@ -89,7 +89,8 @@ class FaceModel:
     def _load_model(self):
         """Load the face emotion recognition model"""
         try:
-            model = tf.keras.models.load_model(settings.FACE_MODEL_PATH)
+            # Load model without compiling to avoid optimizer/class mismatch issues
+            model = tf.keras.models.load_model(settings.FACE_MODEL_PATH, compile=False)
             logger.info("Face model loaded successfully")
             return model
         except Exception as e:
@@ -125,26 +126,32 @@ class FaceModel:
             # Get predictions
             predictions = self.model.predict(processed_face)
             
-            # Get all emotion probabilities
+            # Get all emotion probabilities (0..1)
             emotion_probs = {
-                emotion: float(prob) * 100 
+                emotion: float(prob)
                 for emotion, prob in zip(self.emotions, predictions[0])
             }
-            
+
             # Get the highest probability emotion
-            emotion_index = predictions.argmax()
+            emotion_index = int(np.argmax(predictions[0]))
             emotion = self.emotions[emotion_index]
             confidence = float(predictions[0][emotion_index])
-            
+
+            # Convert face location to left/top/right/bottom for frontend
+            left = int(x)
+            top = int(y)
+            right = int(x + w)
+            bottom = int(y + h)
+
             # Return face location and predictions
             return {
                 "emotion": emotion,
-                "confidence": confidence * 100,  # Convert to percentage
+                "confidence": confidence,  # 0..1
                 "face_location": {
-                    "x": int(x),
-                    "y": int(y),
-                    "width": int(w),
-                    "height": int(h)
+                    "left": left,
+                    "top": top,
+                    "right": right,
+                    "bottom": bottom
                 },
                 "all_emotions": emotion_probs
             }

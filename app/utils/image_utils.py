@@ -52,14 +52,31 @@ def save_result_image(original_img: np.ndarray, face_location: dict, emotion: st
     """Save result image with face detection box and prediction"""
     try:
         img_with_box = original_img.copy()
-        x, y, w, h = face_location['x'], face_location['y'], face_location['width'], face_location['height']
-        
+
+        # Support two possible face_location formats:
+        # 1) {'x', 'y', 'width', 'height'}
+        # 2) {'left', 'top', 'right', 'bottom'}
+        if {'x', 'y', 'width', 'height'}.issubset(face_location.keys()):
+            x = int(face_location['x'])
+            y = int(face_location['y'])
+            w = int(face_location['width'])
+            h = int(face_location['height'])
+        elif {'left', 'top', 'right', 'bottom'}.issubset(face_location.keys()):
+            left = int(face_location['left'])
+            top = int(face_location['top'])
+            right = int(face_location['right'])
+            bottom = int(face_location['bottom'])
+            x, y, w, h = left, top, right - left, bottom - top
+        else:
+            raise ValueError('Unsupported face_location format')
+
         # Draw face rectangle
-        cv2.rectangle(img_with_box, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        
-        # Add prediction text
-        text = f"{emotion}: {confidence:.1f}%"
-        cv2.putText(img_with_box, text, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 
+        cv2.rectangle(img_with_box, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+        # Prepare prediction text: if confidence in 0..1 convert to percent
+        display_conf = (confidence * 100) if confidence <= 1.0 else confidence
+        text = f"{emotion}: {display_conf:.1f}%"
+        cv2.putText(img_with_box, text, (x, max(15, y - 10)), cv2.FONT_HERSHEY_SIMPLEX, 
                     0.9, (0, 255, 0), 2)
         
         # Save result

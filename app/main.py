@@ -35,5 +35,11 @@ async def webcam():
     with open("app/static/webcam.html", "r") as f:
         return f.read()
 
+
+@app.get("/health")
+async def health():
+    """Health check endpoint to verify server is running"""
+    return {"status": "ok"}
+
 # start the server with:
 # python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
