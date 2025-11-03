@@ -1,0 +1,2 @@
+2025-11-03 13:56:26,340 - app.models.audio_model - ERROR - Error loading audio model: 'AudioModel' object has no attribute 'device'
+2025-11-03 13:57:58,665 - app.models.audio_model - ERROR - Error loading audio model: [Errno 2] No such file or directory: 'D:\\Backend_Emotion_Recognition\\models\\audio_model.pth'

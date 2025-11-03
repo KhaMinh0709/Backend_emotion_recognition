@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emotion Recognition - Webcam</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #videoElement {
+            display: none; /* Hide the video element */
+        }
+        #canvasElement {
+            border: 2px solid #333;
+            margin-bottom: 20px;
+        }
+        #result {
+            font-size: 24px;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .emotion {
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .confidence {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Real-time Emotion Recognition</h2>
+        <video id="videoElement" width="640" height="480" autoplay></video>
+        <canvas id="canvasElement" width="640" height="480"></canvas>
+        <div id="result">
+            Emotion: <span class="emotion">--</span>
+            Confidence: <span class="confidence">--</span>
+        </div>
+        <!-- Chart removed - only draw bounding box and label on the video canvas -->
+    </div>
+
+    <script>
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvasElement');
+        const ctx = canvas.getContext('2d');
+        const emotionSpan = document.querySelector('.emotion');
+        const confidenceSpan = document.querySelector('.confidence');
+        
+        // No chart: keep UI minimal (canvas + label)
+
+        // Get webcam access
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+            })
+            .catch(function(err) {
+                console.log("An error occurred: " + err);
+            });
+
+        // Function to send frame and get prediction
+        async function processFrame() {
+            try {
+                // Draw video frame on canvas
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+                const response = await fetch('/face/predict-webcam', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        image_base64: dataUrl
+                    })
+                });
+
+                const result = await response.json();
+                if (!result.error) {
+                    // Update emotion text
+                    emotionSpan.textContent = result.label;
+                    confidenceSpan.textContent = (result.confidence * 100).toFixed(2) + '%';
+                    
+                    // Draw face detection box
+                    if (result.face_location) {
+                        const { left, top, right, bottom } = result.face_location;
+                        
+                        // Clear previous drawing
+                        ctx.drawImage(video, 0, 0);
+                        
+                        // Draw rectangle
+                        ctx.strokeStyle = '#00ff00';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(left, top, right - left, bottom - top);
+                        
+                        // Draw label
+                        ctx.fillStyle = '#00ff00';
+                        ctx.font = '16px Arial';
+                        ctx.fillText(
+                            `${result.label} (${(result.confidence * 100).toFixed(1)}%)`,
+                            left,
+                            top - 5
+                        );
+                    }
+                    
+                    // We no longer display emotion probability chart
+                } else {
+                    console.error('Error:', result.error);
+                }
+            } catch (e) {
+                console.error('Error processing frame:', e);
+            }
+        }
+
+        // Start processing frames
+        setInterval(processFrame, 200); // Process every 200ms
+    </script>
+</body>
+</html>
